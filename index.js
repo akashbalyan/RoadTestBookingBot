@@ -1,5 +1,7 @@
 
 import puppeteer from 'puppeteer';
+import axios from 'axios';
+import {getNearbyOffices, login, getAppointmentsByID} from './apiCalls.js'
 import { config }  from './config.js';
 
 const creds = {
@@ -7,7 +9,7 @@ const creds = {
   licensenumber: config.roadtestcreds.licensenumber,
   keyword: config.roadtestcreds.keyword,
 };
-console.log(creds);
+
 // Launch the browser and open a new blank page
 //const browser = await puppeteer.launch();
 //visible ui
@@ -15,45 +17,101 @@ const browser = await puppeteer.launch({ headless: false });
 
 const page = await browser.newPage();
 
-// Navigate the page to a URL.
-await page.goto('https://onlinebusiness.icbc.com/webdeas-ui/home');
+// // Navigate the page to a URL.
+ await page.goto('https://onlinebusiness.icbc.com/webdeas-ui/home');
 
-// Set screen size.
+// // Set screen size.
 await page.setViewport({width: 1080, height: 1024});
 
-// Type into search box.
-// await page.locator('button.Next').fill('automate beyond recorder');
 
-// Wait and click on first result.
+// // Wait and click on first result.
 await page.locator('text=Next').click();
 
-//await page.locator('button.Next').fill('automate beyond recorder');
-// 'input' is a CSS selector.
+
 await page.locator('input').fill(`${creds.surname}`);
 
 
 await page.locator('input[aria-label="driver-licence"]').fill(`${creds.licensenumber}`);
 
 await page.locator('input[aria-label="keyword"]').fill(`${creds.keyword}`);
-//await page.locator('input[type="checkbox"]').click();
 
-// Runs the `//h2` as the XPath expression.
 const element = await page.waitForSelector('::-p-xpath(/html/body/app-root/app-login/mat-card/mat-card-content/form/span[2]/div[3]/mat-checkbox/label/span[1]/input)');
 
 await element.click();
-//console.log(element);
 
 const sigInButton = await page.waitForSelector('::-p-xpath(/html/body/app-root/app-login/mat-card/mat-card-content/form/div[2]/div[2]/button)');
 
-await sigInButton.click()
-//await page.locator('text=Sign in').click();
-// // Locate the full title with a unique string.
-// const textSelector = await page
-//   .locator('text/Customize and automate')
-//   .waitHandle();
-// const fullTitle = await textSelector?.evaluate(el => el.textContent);
+await sigInButton.click();
 
-// // Print the full title.
-// console.log('The title of this blog post is "%s".', fullTitle);
 
-//await browser.close();
+
+// // await searchBox.fill('richmond');
+// await page.locator('input[aria-label="Number"]').fill('richmond');
+
+// await page.locator('div ::-p-text(Richmond, BC)').click();
+
+
+// // const option = await page.waitForSelector('::-p-xpath(/html/body/div[2]/div[2]/div/div/mat-option)');
+// // console.log(option);
+// //await option.click();
+// //await page.locator('.mat-option-text').click();
+// //await page.locator('mat-option[id=mat-option-88]').click();
+
+// //await page.locator('input[aria-label="Number"]').click();
+// // const searchBoxOPtion = await page.waitForSelector('::-p-xpath(/html/body/div[2]/div[2]/div/div/mat-option/span)');
+// //  await searchBoxOPtion.click();
+
+// // //await page.locator('text=Richmond, BC').click();
+
+// const searchButton = await page.waitForSelector('::-p-xpath(/html/body/div[2]/div/div/mat-dialog-container/app-search-modal/div/div/form/div[2]/button)');
+// await searchButton.click();
+// //await page.locator('text=Sign in').click();
+// // // Locate the full title with a unique string.
+// // const textSelector = await page
+// //   .locator('text/Customize and automate')
+// //   .waitHandle();
+// // const fullTitle = await textSelector?.evaluate(el => el.textContent);
+
+// // // Print the full title.
+// // console.log('The title of this blog post is "%s".', fullTitle);
+
+
+
+const loginResponse = await login();
+const authToken = loginResponse.headers.authorization;
+const nearbyOffices = await getNearbyOffices(authToken);
+
+const nearbyOfficesArray = [];
+nearbyOffices.data.forEach(obj => {
+    nearbyOfficesArray.push({
+        agency : obj.pos.agency,
+        posId : obj.pos.posId
+    })
+});
+
+
+
+const appointmentsByPosId = await getAppointmentsByID(authToken,275);
+
+
+
+const allAppointments = [];
+for (const el of nearbyOfficesArray) {
+    let response = await getAppointmentsByID(authToken, el.posId);
+
+    for(const appointment of response.data){
+        appointment.location = el.agency;
+        allAppointments.push(appointment);
+    }
+}
+
+
+
+const mostRecentAppointment = allAppointments.reduce((latest, current) => {
+    const latestDate = new Date(latest.appointmentDt.date);
+    const currentDate = new Date(current.appointmentDt.date);
+    
+    return currentDate < latestDate ? current : latest;
+  }, allAppointments[0]);
+  
+  console.log(mostRecentAppointment);
