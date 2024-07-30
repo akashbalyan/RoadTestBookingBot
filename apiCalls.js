@@ -53,14 +53,14 @@ export const login = async() => {
 }
 
 
-export const getNearbyOffices = async(authToken) => {
+export const getNearbyOffices = async(authToken,examStartDate) => {
     try {
       const response = await axios.put('https://onlinebusiness.icbc.com/deas-api/v1/web/getNearestPos', 
       {
         lng:'-123.1630556',
         lat: '49.1630556',
         examType: '5-R-1',
-        startDate: '2024-07-28'
+        startDate: `${examStartDate}`
       }, 
       {
         headers: {
@@ -98,13 +98,13 @@ export const getNearbyOffices = async(authToken) => {
     }
   }
   
-  export const getAppointmentsByID = async(authToken, posId) => {
+  export const getAppointmentsByID = async(authToken, posId, examStartDate) => {
     try {
       const response = await axios.post('https://onlinebusiness.icbc.com/deas-api/v1/web/getAvailableAppointments', 
       {
         aPosID:`${posId}`,
         examType: '5-R-1',
-        examDate: '2024-07-28',
+        examDate: `${examStartDate}`,
         ignoreReserveTime :false,
         prfDaysOfWeek: '[0,1,2,3,4,5,6]',
         prfPartsOfDay: '[0,1]',

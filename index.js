@@ -13,7 +13,10 @@ const creds = {
 // Launch the browser and open a new blank page
 //const browser = await puppeteer.launch();
 //visible ui
-const browser = await puppeteer.launch({ headless: false });
+
+const runOnBrowser = async () => {
+
+    const browser = await puppeteer.launch({ headless: false });
 
 const page = await browser.newPage();
 
@@ -42,6 +45,8 @@ await element.click();
 const sigInButton = await page.waitForSelector('::-p-xpath(/html/body/app-root/app-login/mat-card/mat-card-content/form/div[2]/div[2]/button)');
 
 await sigInButton.click();
+}
+
 
 
 
@@ -75,43 +80,48 @@ await sigInButton.click();
 // // // Print the full title.
 // // console.log('The title of this blog post is "%s".', fullTitle);
 
+const findNearestApppoinmetAvailable = async () =>{
 
+    const loginResponse = await login();
+    const authToken = loginResponse.headers.authorization;
+    const examStartDate = loginResponse.data.eligibleExams[0].eed.date;
+    const nearbyOffices = await getNearbyOffices(authToken,examStartDate);
 
-const loginResponse = await login();
-const authToken = loginResponse.headers.authorization;
-const nearbyOffices = await getNearbyOffices(authToken);
-
-const nearbyOfficesArray = [];
-nearbyOffices.data.forEach(obj => {
-    nearbyOfficesArray.push({
-        agency : obj.pos.agency,
-        posId : obj.pos.posId
-    })
-});
-
-
-
-const appointmentsByPosId = await getAppointmentsByID(authToken,275);
+    const nearbyOfficesArray = [];
+    nearbyOffices.data.forEach(obj => {
+        nearbyOfficesArray.push({
+            agency : obj.pos.agency,
+            posId : obj.pos.posId
+        })
+    });
 
 
 
-const allAppointments = [];
-for (const el of nearbyOfficesArray) {
-    let response = await getAppointmentsByID(authToken, el.posId);
+    const appointmentsByPosId = await getAppointmentsByID(authToken,275,examStartDate);
 
-    for(const appointment of response.data){
-        appointment.location = el.agency;
-        allAppointments.push(appointment);
+
+
+    const allAppointments = [];
+    for (const el of nearbyOfficesArray) {
+        let response = await getAppointmentsByID(authToken, el.posId,examStartDate);
+
+        for(const appointment of response.data){
+            appointment.location = el.agency;
+            allAppointments.push(appointment);
+        }
     }
+
+
+
+    const mostRecentAppointment = allAppointments.reduce((latest, current) => {
+        const latestDate = new Date(latest.appointmentDt.date);
+        const currentDate = new Date(current.appointmentDt.date);
+        
+        return currentDate < latestDate ? current : latest;
+    }, allAppointments[0]);
+    
+    console.log(mostRecentAppointment);
 }
 
+findNearestApppoinmetAvailable();
 
-
-const mostRecentAppointment = allAppointments.reduce((latest, current) => {
-    const latestDate = new Date(latest.appointmentDt.date);
-    const currentDate = new Date(current.appointmentDt.date);
-    
-    return currentDate < latestDate ? current : latest;
-  }, allAppointments[0]);
-  
-  console.log(mostRecentAppointment);
